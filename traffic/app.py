@@ -17,8 +17,8 @@ pygame.display.set_caption("Traffic")
 city_surface = pygame.image.load("traffic/images/city.jpg").convert()
 vehicle_surface = pygame.image.load("traffic/images/redcar.png").convert_alpha()
 
-# Transform images
-city_surface = pygame.transform.scale(city_surface, (SCREEN_WIDTH, SCREEN_HEIGHT))
+#Transform images
+city_surface = pygame.transform.scale(city_surface, (900, 900))
 vehicle_surface = pygame.transform.scale(vehicle_surface, (40, 40))
 
 # List to store active vehicles
@@ -34,7 +34,7 @@ class Vehicle:
         self.path = self.shift_path(path)
         self.show_path = False
         self.facing = 'F'
-        self.path_color = str(random.choice(['red','blue','green','cyan','yellow','purple']))
+        self.path_color = str(random.choice(['green','yellow','orange']))
         self.current_index = 0
         self.original_surface = image
         self.surface = image.copy()
@@ -207,20 +207,43 @@ class Vehicle:
 
     def draw(self, screen):
         if self.show_path:
-            for i in range(0, len(self.path) - 1):
+            for i in range(self.current_index, len(self.path) - 2):
 
-                # pygame.draw.line(
-                #     surface=screen,
-                #     color=self.path_color,
-                #     start_pos=(self.rect.centerx, self.rect.centery),
-                #     end_pos=self.original_path[self.current_index + 1],
-                #     width=10)
+                if self.facing=='U':
+                    centerx=self.rect.centerx+10
+                    centery=self.rect.centery-18 #
+                elif self.facing=='D':
+                    centerx=self.rect.centerx-10
+                    centery=self.rect.centery+18 #
+
+                elif self.facing=='L':
+                    centerx=self.rect.centerx-18 #
+                    centery=self.rect.centery-10
+
+                elif self.facing=='R':
+                    centerx=self.rect.centerx+18 #
+                    centery=self.rect.centery+10
+
+                pygame.draw.circle(
+                    screen,
+                    color=self.path_color,
+                    center=(centerx,centery),
+                    radius=5,
+                    width=20
+
+                )
+                pygame.draw.line(
+                    surface=screen,
+                    color=self.path_color,
+                    start_pos=(centerx, centery),
+                    end_pos=self.original_path[self.current_index + 1],
+                    width=10)
                 
                 pygame.draw.line(
                     surface=screen,
                     color=self.path_color,
-                    start_pos=self.original_path[i],
-                    end_pos=self.original_path[i +1],
+                    start_pos=self.original_path[i+1],
+                    end_pos=self.original_path[i +2],
                     width=8)
                 
         screen.blit(self.surface, self.rect)
