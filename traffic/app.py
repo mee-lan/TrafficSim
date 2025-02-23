@@ -14,17 +14,22 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Traffic")
 
 # Load images
-city_surface = pygame.image.load("traffic/images/city.jpg").convert()
-vehicle_surface = pygame.image.load("traffic/images/redcar.png").convert_alpha()
+city_surface = pygame.image.load("traffic/images/city.jpg").convert_alpha()
+truck_surface = pygame.image.load("traffic/images/truck.png").convert_alpha()
+red_car_surface = pygame.image.load("traffic/images/redcar.png").convert_alpha()
+#yellow_car_surface = pygame.image.load("traffic/images/f1_car.png").convert_alpha()
 
 #Transform images
 city_surface = pygame.transform.scale(city_surface, (900, 900))
-vehicle_surface = pygame.transform.scale(vehicle_surface, (40, 40))
+truck_surface = pygame.transform.scale(truck_surface, (22, 80))
+red_car_surface = pygame.transform.scale(red_car_surface, (18, 60))
+#yellow_car_surface = pygame.transform.scale(yellow_car_surface, (20, 50))
 
 # List to store active vehicles
 vehicles = []
+collided= []
 spawn_timer = 0  # Timer for controlling vehicle spawn interval
-SPAWN_INTERVAL = 2000  # 2 seconds
+SPAWN_INTERVAL = 3000  # 2 seconds
 
 class Vehicle:
     def __init__(self, path, image):
@@ -34,11 +39,15 @@ class Vehicle:
         self.path = self.shift_path(path)
         self.show_path = False
         self.facing = 'F'
+        self.speed=1
+        self.collideflag = False
         self.path_color = str(random.choice(['green','yellow','orange']))
         self.current_index = 0
+        self.old_rect = None
         self.original_surface = image
         self.surface = image.copy()
         self.x, self.y = self.path[0]
+        self.lookahead_rect = self.surface.get_rect(center=(self.x,self.y)) # for collision management if another vehicle is in this rectangle area collision
         #self.original_x,self.original_y = self.original_path
         self.rect = self.surface.get_rect(center=(self.x, self.y))
         
@@ -48,6 +57,25 @@ class Vehicle:
         
         print("Before path", self.original_path)
         print("After shifted path", self.path)
+
+    def check_ahead(self,safety_distance):
+        #self.old_rect = self.lookahead_rect
+        #self.lookahead_rect = pygame.Rect(self.rect.centerx,self.rect.centery,40,40)
+        if self.facing == 'R':
+                self.lookahead_rect = pygame.Rect(self.rect.right, self.rect.top,
+                                            safety_distance, self.rect.height)
+        elif self.facing == 'L':
+                self.lookahead_rect = pygame.Rect(self.rect.left - safety_distance,
+                                            self.rect.top, safety_distance, self.rect.height)
+        elif self.facing == 'U':
+                self.lookahead_rect = pygame.Rect(self.rect.left, self.rect.top - safety_distance,
+                                            self.rect.width, safety_distance)
+        elif self.facing == 'D':
+                self.lookahead_rect = pygame.Rect(self.rect.left, self.rect.bottom,
+                                            self.rect.width, safety_distance)
+        else:
+            self.lookahead_rect = self.rect.copy()  # fallback
+        
 
     def compute_offset_vector(self,A, B, offset=10):
         """
@@ -78,7 +106,7 @@ class Vehicle:
             # For non-axis-aligned segments, you may need a more general solution.
             return (0, 0)
 
-    def shift_path(self,path, offset=10):
+    def shift_path(self,path, offset=12):
         """
         Given a centerline path (a list of coordinate tuples), compute a new path
         for the left lane.
@@ -148,15 +176,48 @@ class Vehicle:
         self.surface = pygame.transform.rotate(self.original_surface, angle)
         self.rect = self.surface.get_rect(center=self.rect.center)
 
-    def update_position(self):
+
+    def checkcollission(self):
+        # Recompute the lookahead rectangle
+        self.check_ahead(50)
+        
+        collision_detected = False  # local flag for this check
+        for vehicle in vehicles:
+            if vehicle is not self:
+                other_lookahead = vehicle.lookahead_rect
+                if self.lookahead_rect.colliderect(other_lookahead):
+                    collision_detected = True
+                    # Decide which vehicle should yield.
+                    # For example, the one with higher current_index might be behind.
+                    if self.current_index > vehicle.current_index:
+                        self.speed = 0
+                        self.collideflag = True
+                        # Optionally, you might resolve the overlap here:
+                        # self.rect = self.old_rect.copy() or call resolve_overlap(self, vehicle)
+                    # You might choose not to force the other vehicle to stop,
+                    # letting it resolve its collision state in its own check.
+                    print("collision detected")
+                    # No break here: you might want to check against all vehicles.
+        
+        # After checking all vehicles, if no collision was detected, reset state.
+        if not collision_detected:
+            self.speed = 1  # restore default speed
+            self.collideflag = False
+
+
+    
+    def update_position(self,):
+        #print("LEFT::",self.rect.left)
+        #self.check_ahead(safety_distance=30)
+        self.checkcollission()
         target_x, target_y = self.path[self.current_index + 1]
         dx = target_x - self.rect.centerx
         dy = target_y - self.rect.centery
 
         if abs(dx) > 0:
-            self.rect.centerx += 1 if dx > 0 else -1
+            self.rect.centerx += self.speed if dx > 0 else -self.speed
         elif abs(dy) > 0:
-            self.rect.centery += 1 if dy > 0 else -1
+            self.rect.centery += self.speed if dy > 0 else -self.speed
 
         if (self.rect.centerx, self.rect.centery) == (target_x, target_y):
             self.current_index += 1  # Move to next waypoint
@@ -250,6 +311,32 @@ class Vehicle:
 
     def check_click(self, pos):
         return self.rect.collidepoint(pos)
+    
+# def check_collisions():
+#     n = len(vehicles)
+#     for i in range(n):
+#         for j in range(i + 1, n):
+#             veh1 = vehicles[i]
+#             veh2 = vehicles[j]
+#             # Update lookahead rectangles
+#             rect1 = veh1.lookahead_rect
+#             #screen.blit(city_surface,(0,0))
+#             #pygame.draw.rect(city_surface,'red',veh1.lookahead_rect)
+#             rect2 = veh2.lookahead_rect
+#             #pygame.draw.rect(city_surface,'blue',veh2.lookahead_rect)
+#             if rect1.colliderect(rect2):
+#                 # Decide which vehicle should yield (e.g., the one that’s behind)
+#                 if veh1.current_index > veh2.current_index:
+#                     veh1.speed = 0
+#                 elif veh2.current_index > veh1.current_index:
+#                     veh2.speed = 0
+#                 else:
+#                     veh1.speed = veh2.speed = 0
+#             else:
+#                 # If no collision, restore default speeds
+#                 veh1.speed = 1
+#                 veh2.speed = 1
+
 
 
 
@@ -263,12 +350,15 @@ def spawn_vehicle():
 
 
     if path:
-        new_vehicle = Vehicle(path,vehicle_surface)
+        vehicle = random.choice([red_car_surface,truck_surface])
+        new_vehicle = Vehicle(path,vehicle)
         vehicles.append(new_vehicle)
 
 
 while True:
     screen.blit(city_surface, (0, 0))
+
+    #check_collisions()
 
     # Handle vehicle spawning at intervals
     current_time = pygame.time.get_ticks()
@@ -303,4 +393,4 @@ while True:
 
 
     pygame.display.update()
-    clock.tick(144)
+    clock.tick(100)
