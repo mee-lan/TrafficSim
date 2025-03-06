@@ -1,8 +1,10 @@
 import pygame
 import random
 from sys import exit
+import math
 import city_graph as ts
 import utility_func as utility_func
+from city_graph import coordinates
 
 pygame.init()
 
@@ -13,23 +15,148 @@ clock = pygame.time.Clock()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Traffic")
 
+#load font
+font=pygame.font.Font("traffic/src/fonts/small_pixel.ttf",22)
+
+#color
+TEXT_COL=(7, 250, 174)
+
 # Load images
-city_surface = pygame.image.load("traffic/images/city.jpg").convert_alpha()
-truck_surface = pygame.image.load("traffic/images/truck.png").convert_alpha()
-red_car_surface = pygame.image.load("traffic/images/redcar.png").convert_alpha()
-#yellow_car_surface = pygame.image.load("traffic/images/f1_car.png").convert_alpha()
+city_surface = pygame.image.load("traffic/src/images/city.jpg").convert_alpha()
+truck_surface = pygame.image.load("traffic/src/images/truck.png").convert_alpha()
+red_car_surface = pygame.image.load("traffic/src/images/redcar.png").convert_alpha()
+location_icon_surface = pygame.image.load("traffic/src/images/location_icon.png").convert_alpha()
+menu_bar_surface = pygame.image.load("traffic/src/images/menu_bar.png").convert_alpha()
+
 
 #Transform images
 city_surface = pygame.transform.scale(city_surface, (900, 900))
 truck_surface = pygame.transform.scale(truck_surface, (22, 80))
 red_car_surface = pygame.transform.scale(red_car_surface, (18, 60))
+location_icon_surface=pygame.transform.scale(location_icon_surface, (50, 50))
+menu_bar_surface=pygame.transform.scale(menu_bar_surface, (50, 50))
 #yellow_car_surface = pygame.transform.scale(yellow_car_surface, (20, 50))
 
 # List to store active vehicles
 vehicles = []
+my_vehicle=[]
 collided= []
+source=None,
+destination=None
+
 spawn_timer = 0  # Timer for controlling vehicle spawn interval
-SPAWN_INTERVAL = 3000  # 2 seconds
+text_timer=0
+SPAWN_INTERVAL = 3000  # 3 seconds
+
+def draw_text(text,font,text_col):
+    global text_timer
+    if text_timer<50:
+        text_surf = font.render(text,True,text_col)
+        text_rect = text_surf.get_rect(center=(SCREEN_WIDTH//2,SCREEN_HEIGHT*0.03))
+        screen.blit(text_surf,text_rect)
+
+    text_timer+=1
+
+    if text_timer==100:
+        text_timer=0
+
+def draw_item(coords):
+    loc_rect = location_icon_surface.get_rect(center=coords)
+    screen.blit(location_icon_surface,loc_rect.topleft)
+
+class UI:
+    def __init__(self,surface,image,x,y):
+        self.image=image
+        self.surface=surface
+        self.x=x
+        self.click_count=0
+        self.y=y
+        self.draw_location_icon=False
+        self.source_coords = (-100,-100)
+        self.source_node=None
+        self.destination_node=None
+
+        self.destination_coords=(-100,-100)
+        self.is_menu_bar_open = False
+        self.menu_icon_rect = self.surface.get_rect(topleft=(self.x,self.y))
+
+    def render(self):
+
+        screen.blit(self.surface,(self.x,self.y))
+
+        if (self.is_menu_bar_open):
+            self.show_text()
+            
+        if (self.draw_location_icon):
+            draw_item(self.source_coords)
+            draw_item(self.destination_coords)
+
+
+    def handle_source_destination(self,pos):
+        global source,destination,show_location_icon
+
+        if (self.is_menu_bar_open):
+            self.show_text()
+        
+        if not self.menu_icon_rect.collidepoint(event.pos):
+            #only read it as input to source or destination coordinate if user has not clicked on menu icon
+    
+            if (self.click_count==0):
+                node=self.find_source_or_destination_node(pos)
+                self.source_coords=coordinates[node]
+                self.source_node=node
+                self.click_count+=1
+                self.draw_location_icon=True
+            
+            elif (self.click_count==1):
+                node=self.find_source_or_destination_node(pos)
+                self.destination_coords=coordinates[node]
+                self.destination_node=node
+                #Both source and destination are fixed now spawn vehicle
+                self.click_count=0
+
+                self.is_menu_bar_open=False
+                self.is_first_vehicle=False
+                source=self.source_coords
+                destination=self.destination_coords
+                spawn_vehicle(self.source_node,self.destination_node)
+            
+            else:
+                print("some error occured , clickcount",self.click_count)
+
+
+            print("user clicked at x,y",pos)
+
+
+
+    def find_source_or_destination_node(self,pos):
+    
+            #Find the nearest node to the clicked position
+            min_dist = float('inf')
+            nearest = None
+            x, y = pos
+            for node, (nx, ny) in coordinates.items():
+                dist = math.sqrt((x - nx) ** 2 + (y - ny) ** 2)
+                if dist < min_dist:
+                    min_dist = dist
+                    nearest = node
+            return (nearest) # returns tuple with 3 datas i.e x ,y coordinates and the name of node
+    
+
+    def show_text(self):
+            draw_text(
+            text="Select Source And Destination",
+            font=font,
+            text_col=TEXT_COL,
+            )
+
+
+    def reset_state(self):
+            self.draw_location_icon=False
+            self.source_coords=(-100,1000)
+            self.destination_coords=(-100,-100)
+            self.click_count=0
+
 
 class Vehicle:
     def __init__(self, path, image):
@@ -309,57 +436,43 @@ class Vehicle:
                 
         screen.blit(self.surface, self.rect)
 
+
     def check_click(self, pos):
         return self.rect.collidepoint(pos)
-    
-# def check_collisions():
-#     n = len(vehicles)
-#     for i in range(n):
-#         for j in range(i + 1, n):
-#             veh1 = vehicles[i]
-#             veh2 = vehicles[j]
-#             # Update lookahead rectangles
-#             rect1 = veh1.lookahead_rect
-#             #screen.blit(city_surface,(0,0))
-#             #pygame.draw.rect(city_surface,'red',veh1.lookahead_rect)
-#             rect2 = veh2.lookahead_rect
-#             #pygame.draw.rect(city_surface,'blue',veh2.lookahead_rect)
-#             if rect1.colliderect(rect2):
-#                 # Decide which vehicle should yield (e.g., the one that’s behind)
-#                 if veh1.current_index > veh2.current_index:
-#                     veh1.speed = 0
-#                 elif veh2.current_index > veh1.current_index:
-#                     veh2.speed = 0
-#                 else:
-#                     veh1.speed = veh2.speed = 0
-#             else:
-#                 # If no collision, restore default speeds
-#                 veh1.speed = 1
-#                 veh2.speed = 1
 
 
 
 
-
-def spawn_vehicle():
+def spawn_vehicle(source='NULL',destination='NULL'):
     """Spawn a vehicle with a random source & destination (only edge nodes)."""
     global vehicles,vehicle_surface
-    source, destination = utility_func.random_spawn_edge()
+    is_user_defined=False
+
+    if source=='NULL' and destination=='NULL':
+        is_user_defined=True
+        source, destination = utility_func.random_spawn_edge()
+
     path = ts.shortest_coord(source=source, destination=destination)
     
-
-
     if path:
         vehicle = random.choice([red_car_surface,truck_surface])
         new_vehicle = Vehicle(path,vehicle)
-        vehicles.append(new_vehicle)
 
+        # if source =='NULL' then it is random vehicle generated by app itself
+        #  but if source and destionation given then it is by user so put them in my_vehicle list
+        if is_user_defined:
+            my_vehicle.append(new_vehicle)
+        else:
+            new_vehicle.show_path=True
+            vehicles.append(new_vehicle)
+
+
+menu = UI(menu_bar_surface,menu_bar_surface,SCREEN_WIDTH*0.91,SCREEN_HEIGHT*0.02) #menu icon
 
 while True:
     screen.blit(city_surface, (0, 0))
-
-    #check_collisions()
-
+    menu.render()
+    
     # Handle vehicle spawning at intervals
     current_time = pygame.time.get_ticks()
     if current_time - spawn_timer > SPAWN_INTERVAL:
@@ -367,11 +480,21 @@ while True:
         spawn_timer = current_time  # Reset spawn timer
 
     # Update & draw vehicles
+    #FOR NPC VEHICLES
     for vehicle in vehicles[:]:  # Iterate over a copy of the list to allow removal
         vehicle.update_position()
 
         if vehicle.has_reached_destination():
             vehicles.remove(vehicle)  # Remove vehicle when it reaches destination
+        else:
+            vehicle.draw(screen)
+    
+    #FOR OWN VEHICLE i.e defined by user
+    for vehicle in my_vehicle[:]:  # Iterate over a copy of the list to allow removal
+        vehicle.update_position()
+
+        if vehicle.has_reached_destination():
+            my_vehicle.remove(vehicle)  # Remove vehicle when it reaches destination
         else:
             vehicle.draw(screen)
 
@@ -386,11 +509,28 @@ while True:
             pass
 
         if event.type == pygame.MOUSEBUTTONDOWN:
+
             for vehicle in vehicles[:]:
                 if vehicle.check_click(event.pos):
                     print("Clicked")
                     vehicle.show_path= not vehicle.show_path
+            
 
+            for vehicle in my_vehicle[:]:
+                if vehicle.check_click(event.pos):
+                    print("Clicked")
+                    vehicle.show_path= not vehicle.show_path
 
+            if (menu.is_menu_bar_open): # only handle source destination logic if menu is opened
+                if (menu.click_count < 2): # user can click only twice i.e source and destination
+                    menu.handle_source_destination(event.pos)
+    
+            if menu.menu_icon_rect.collidepoint(event.pos):
+                menu.show_text()
+                if not menu.is_menu_bar_open: menu.reset_state() #if it is just click reset state like click count=0 source,dest=-100
+                menu.is_menu_bar_open = not menu.is_menu_bar_open
+                print("Rectangle clicked!")
+
+                
     pygame.display.update()
     clock.tick(100)
