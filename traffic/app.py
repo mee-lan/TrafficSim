@@ -47,6 +47,7 @@ destination=None
 spawn_timer = 0  # Timer for controlling vehicle spawn interval
 text_timer=0
 SPAWN_INTERVAL = 3000  # 3 seconds
+vehicle_id_counter=0
 
 def draw_text(text,font,text_col):
     global text_timer
@@ -160,25 +161,28 @@ class UI:
 
 class Vehicle:
     def __init__(self, path, image):
-        # Store the original unshifted path
-        self.original_path = path[:]  
-        # Create a shifted path for lane driving
+        global vehicle_id_counter
+        self.id = vehicle_id_counter
+        vehicle_id_counter += 1  # Increment the counter
+        
+        self.original_path = path[:]
         self.path = self.shift_path(path)
         self.show_path = False
         self.facing = 'F'
-        self.speed=1
+        self.speed = 1
         self.collideflag = False
-        self.path_color = str(random.choice(['green','yellow','orange']))
+        self.pushback_active = False  # New: Tracks if vehicle is being pushed back
+        self.pushback_distance = 0    # New: Total distance to push back
+        self.pushback_speed = 1       # New: Speed of pushback (pixels per frame)
+        self.path_color = random.choice(['green', 'yellow', 'orange'])
         self.current_index = 0
         self.old_rect = None
         self.original_surface = image
         self.surface = image.copy()
         self.x, self.y = self.path[0]
-        self.lookahead_rect = self.surface.get_rect(center=(self.x,self.y)) # for collision management if another vehicle is in this rectangle area collision
-        #self.original_x,self.original_y = self.original_path
+        self.lookahead_rect = self.surface.get_rect(center=(self.x, self.y))
         self.rect = self.surface.get_rect(center=(self.x, self.y))
         
-        # Set initial rotation based on the first movement direction using the original path
         if len(self.original_path) > 1:
             self.set_initial_direction(self.original_path[0], self.original_path[1])
         
@@ -189,17 +193,17 @@ class Vehicle:
         #self.old_rect = self.lookahead_rect
         #self.lookahead_rect = pygame.Rect(self.rect.centerx,self.rect.centery,40,40)
         if self.facing == 'R':
-                self.lookahead_rect = pygame.Rect(self.rect.right, self.rect.top,
-                                            safety_distance, self.rect.height)
+                self.lookahead_rect = pygame.Rect(self.rect.centerx, self.rect.top+5,
+                                            safety_distance, self.rect.height-10)
         elif self.facing == 'L':
-                self.lookahead_rect = pygame.Rect(self.rect.left - safety_distance,
-                                            self.rect.top, safety_distance, self.rect.height)
+                self.lookahead_rect = pygame.Rect(self.rect.centerx - safety_distance,
+                                            self.rect.top+5, safety_distance, self.rect.height-10)
         elif self.facing == 'U':
-                self.lookahead_rect = pygame.Rect(self.rect.left, self.rect.top - safety_distance,
-                                            self.rect.width, safety_distance)
+                self.lookahead_rect = pygame.Rect(self.rect.left+5, self.rect.centery - safety_distance,
+                                            self.rect.width-10, safety_distance)
         elif self.facing == 'D':
-                self.lookahead_rect = pygame.Rect(self.rect.left, self.rect.bottom,
-                                            self.rect.width, safety_distance)
+                self.lookahead_rect = pygame.Rect(self.rect.left+5, self.rect.centery,
+                                            self.rect.width-10, safety_distance)
         else:
             self.lookahead_rect = self.rect.copy()  # fallback
         
@@ -303,68 +307,91 @@ class Vehicle:
         self.surface = pygame.transform.rotate(self.original_surface, angle)
         self.rect = self.surface.get_rect(center=self.rect.center)
 
+        
+    def start_pushback(self, max_distance=10):
+        """Initiate a smooth pushback over multiple frames."""
+        self.pushback_active = True
+        self.pushback_distance = max_distance  # Total distance to push back
+        self.speed = 0  # Stop forward movement during pushback
+        self.collideflag = True
+        print(f"Vehicle {self.id} at {self.rect.center} started pushback")
+
+
+    def update_pushback(self):
+        """Incrementally push the vehicle back each frame."""
+        if self.pushback_active and self.pushback_distance > 0:
+            push_step = min(self.pushback_speed, self.pushback_distance)  # Move by pushback_speed or remaining distance
+            if self.facing == 'R':
+                self.rect.centerx -= push_step
+            elif self.facing == 'L':
+                self.rect.centerx += push_step
+            elif self.facing == 'U':
+                self.rect.centery += push_step
+            elif self.facing == 'D':
+                self.rect.centery -= push_step
+            self.pushback_distance -= push_step
+            if self.pushback_distance <= 0:
+                self.pushback_active = False
+                print(f"Vehicle {self.id} at {self.rect.center} completed pushback")
+
 
     def checkcollission(self):
-        # Recompute the lookahead rectangle
-        self.check_ahead(50)
+        self.check_ahead(80)
+        collision_detected = False
+        all_vehicles = my_vehicle + vehicles
         
-        collision_detected = False  # local flag for this check
-        for vehicle in vehicles:
+        for vehicle in all_vehicles:
             if vehicle is not self:
-                other_lookahead = vehicle.lookahead_rect
-                if self.lookahead_rect.colliderect(other_lookahead):
+                if self.lookahead_rect.colliderect(vehicle.rect):
                     collision_detected = True
-                    # Decide which vehicle should yield.
-                    # For example, the one with higher current_index might be behind.
-                    if self.current_index > vehicle.current_index:
-                        self.speed = 0
-                        self.collideflag = True
-                        # Optionally, you might resolve the overlap here:
-                        # self.rect = self.old_rect.copy() or call resolve_overlap(self, vehicle)
-                    # You might choose not to force the other vehicle to stop,
-                    # letting it resolve its collision state in its own check.
-                    print("collision detected")
-                    # No break here: you might want to check against all vehicles.
+                    if self.rect.colliderect(vehicle.rect):
+                        if self.id < vehicle.id and not self.pushback_active:
+                            self.start_pushback(max_distance=10)  # Start smooth pushback
+                        # Higher ID vehicle continues moving
+                    else:
+                        if self.id < vehicle.id and not self.pushback_active:
+                            self.speed = 0
+                            self.collideflag = True
+                            print(f"Vehicle {self.id} at {self.rect.center} stopped due to near collision with Vehicle {vehicle.id}")
+                    #break
         
-        # After checking all vehicles, if no collision was detected, reset state.
-        if not collision_detected:
-            self.speed = 1  # restore default speed
+        if not collision_detected and self.collideflag and not self.pushback_active:
+            self.speed = 1
             self.collideflag = False
+            print(f"Vehicle {self.id} at {self.rect.center} resumed movement")
 
 
-    
     def update_position(self,):
-        #print("LEFT::",self.rect.left)
-        #self.check_ahead(safety_distance=30)
         self.checkcollission()
-        target_x, target_y = self.path[self.current_index + 1]
-        dx = target_x - self.rect.centerx
-        dy = target_y - self.rect.centery
+        
+        # Handle pushback if active
+        if self.pushback_active:
+            self.update_pushback()
+        # Move forward only if not pushing back and speed > 0
+        elif self.speed > 0:
+            target_x, target_y = self.path[self.current_index + 1]
+            dx = target_x - self.rect.centerx
+            dy = target_y - self.rect.centery
 
-        if abs(dx) > 0:
-            self.rect.centerx += self.speed if dx > 0 else -self.speed
-        elif abs(dy) > 0:
-            self.rect.centery += self.speed if dy > 0 else -self.speed
-
-        if (self.rect.centerx, self.rect.centery) == (target_x, target_y):
-            self.current_index += 1  # Move to next waypoint
-            
-            # Use the original path to determine if a rotation is needed.
-            if self.current_index < len(self.original_path) - 1:
-                # Only rotate if the direction truly changes.
-                if self.current_index > 0:
-                    prev = self.original_path[self.current_index - 1]
-                    curr = self.original_path[self.current_index]
-                    nxt = self.original_path[self.current_index + 1]
-
-                    current_dir = (curr[0] - prev[0], curr[1] - prev[1])
-                    next_dir = (nxt[0] - curr[0], nxt[1] - curr[1])
-
-                    if current_dir != next_dir:
-                        self.rotate_vehicle(curr, nxt)
-                else:
-                    self.rotate_vehicle(self.original_path[self.current_index],
-                                        self.original_path[self.current_index + 1])
+            if abs(dx) > self.speed:
+                self.rect.centerx += self.speed if dx > 0 else -self.speed
+            elif abs(dy) > self.speed:
+                self.rect.centery += self.speed if dy > 0 else -self.speed
+            else:
+                self.rect.centerx, self.rect.centery = target_x, target_y
+                self.current_index += 1
+                if self.current_index < len(self.original_path) - 1:
+                    if self.current_index > 0:
+                        prev = self.original_path[self.current_index - 1]
+                        curr = self.original_path[self.current_index]
+                        nxt = self.original_path[self.current_index + 1]
+                        current_dir = (curr[0] - prev[0], curr[1] - prev[1])
+                        next_dir = (nxt[0] - curr[0], nxt[1] - curr[1])
+                        if current_dir != next_dir:
+                            self.rotate_vehicle(curr, nxt)
+                    else:
+                        self.rotate_vehicle(self.original_path[self.current_index],
+                                            self.original_path[self.current_index + 1])
 
     def rotate_vehicle(self, current_point, next_point):
         """Rotate based on the vector from current_point to next_point."""
@@ -396,6 +423,9 @@ class Vehicle:
     def draw(self, screen):
         if self.show_path:
             for i in range(self.current_index, len(self.path) - 2):
+
+                pygame.draw.rect(screen, (255, 255, 0), self.lookahead_rect, 50)  # Draw lookahead_rect in red
+                screen.blit(self.surface, self.rect)
 
                 if self.facing=='U':
                     centerx=self.rect.centerx+10
@@ -479,22 +509,14 @@ while True:
         spawn_vehicle()
         spawn_timer = current_time  # Reset spawn timer
 
-    # Update & draw vehicles
-    #FOR NPC VEHICLES
-    for vehicle in vehicles[:]:  # Iterate over a copy of the list to allow removal
+    all_vehicles = vehicles + my_vehicle  # Combine lists for rendering and collision
+    for vehicle in all_vehicles[:]:
         vehicle.update_position()
-
         if vehicle.has_reached_destination():
-            vehicles.remove(vehicle)  # Remove vehicle when it reaches destination
-        else:
-            vehicle.draw(screen)
-    
-    #FOR OWN VEHICLE i.e defined by user
-    for vehicle in my_vehicle[:]:  # Iterate over a copy of the list to allow removal
-        vehicle.update_position()
-
-        if vehicle.has_reached_destination():
-            my_vehicle.remove(vehicle)  # Remove vehicle when it reaches destination
+            if vehicle in vehicles:
+                vehicles.remove(vehicle)
+            elif vehicle in my_vehicle:
+                my_vehicle.remove(vehicle)
         else:
             vehicle.draw(screen)
 
