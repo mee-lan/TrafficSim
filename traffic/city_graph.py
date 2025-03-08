@@ -63,23 +63,6 @@ def build_graph(adjlist, coordinates):
             graph.add_edge(node, neighbor, weight=weight)
     return graph
 
-def adjust_lane_coordinates(path, coordinates):
-    adjusted_coords = []
-    for i in range(len(path) - 1):
-        node = path[i]
-        next_node = path[i + 1]
-        x, y = coordinates[node]
-        next_x, next_y = coordinates[next_node]
-        if x > next_x and y == next_y:
-            adjusted_coords.append((x, y + 12))  # 10*1.2
-        elif x < next_x and y == next_y:
-            adjusted_coords.append((x, y - 12))
-        elif x == next_x and y > next_y:
-            adjusted_coords.append((x + 12, y))
-        elif x == next_x and y < next_y:
-            adjusted_coords.append((x - 12, y))
-    return adjusted_coords
-
 def shortest_coord(source='A', destination='AA'):
     coord = []
     road_graph = build_graph(adjlist, coordinates)

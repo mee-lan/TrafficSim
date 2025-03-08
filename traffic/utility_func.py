@@ -1,7 +1,8 @@
 #This one is for generating random source and destination nodes to spawn vehicles randomly
-
 import random
 from city_graph import shortest_coord
+from consts import red_car_surface,truck_surface,race_car_surface
+from vehicle_class import Vehicle,my_vehicle,vehicle_id_counter,vehicles
 
 adjlist = {
     'A': ['D'], 'B': ['E'], 'C': ['F'], 'D': ['A', 'E', 'J'], 'E': ['D', 'F', 'B'],
@@ -22,4 +23,23 @@ def random_spawn_edge():
     #random selection of source & destination from precomputed edge nodes."""
     return random.sample(edge_nodes, 2)  # Pick two different edge nodes
 
+def spawn_vehicle(source='NULL', destination='NULL'):
+    global vehicles
+    is_user_defined = False
+
+    if source == 'NULL' and destination == 'NULL':
+        is_user_defined = True
+        source, destination = random_spawn_edge()
+
+    path = shortest_coord(source=source, destination=destination)
+
+    if path:
+        vehicle = random.choice([red_car_surface, truck_surface, race_car_surface])
+        new_vehicle = Vehicle(path, vehicle)
+
+        if is_user_defined:
+            my_vehicle.append(new_vehicle)
+        else:
+            new_vehicle.show_path = True
+            vehicles.append(new_vehicle)
 
