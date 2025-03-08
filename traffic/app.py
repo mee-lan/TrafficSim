@@ -1,179 +1,204 @@
 import pygame
 import random
+import os
 from sys import exit
 import math
 import city_graph as ts
 import utility_func as utility_func
+from sound import load_and_play_city_sound, intro_sound, play_selected_sound
 from city_graph import coordinates
 
 pygame.init()
 
-SCREEN_WIDTH = 900
-SCREEN_HEIGHT = 900
+SCREEN_WIDTH = 1080  
+SCREEN_HEIGHT = 1080  
 clock = pygame.time.Clock()
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Traffic")
 
-#load font
-font=pygame.font.Font("traffic/src/fonts/small_pixel.ttf",22)
-
-#color
-TEXT_COL=(7, 250, 174)
+# Load font (scale font size from 22 to 26, i.e., 22 * 1.2)
+font = pygame.font.Font('traffic/src/fonts/small_pixel.ttf', 26)
+TEXT_COL = (255, 255, 255)  # White text color
 
 # Load images
-city_surface = pygame.image.load("traffic/src/images/city.jpg").convert_alpha()
+city_surface = pygame.image.load("traffic/src/images/city.jpg").convert()
 truck_surface = pygame.image.load("traffic/src/images/truck.png").convert_alpha()
 red_car_surface = pygame.image.load("traffic/src/images/redcar.png").convert_alpha()
+race_car_surface = pygame.image.load("traffic/src/images/race_car.png").convert_alpha()
 location_icon_surface = pygame.image.load("traffic/src/images/location_icon.png").convert_alpha()
 menu_bar_surface = pygame.image.load("traffic/src/images/menu_bar.png").convert_alpha()
 
-
-#Transform images
-city_surface = pygame.transform.scale(city_surface, (900, 900))
-truck_surface = pygame.transform.scale(truck_surface, (22, 80))
-red_car_surface = pygame.transform.scale(red_car_surface, (18, 60))
-location_icon_surface=pygame.transform.scale(location_icon_surface, (50, 50))
-menu_bar_surface=pygame.transform.scale(menu_bar_surface, (50, 50))
-#yellow_car_surface = pygame.transform.scale(yellow_car_surface, (20, 50))
+# Transform images (scale by 1.2)
+city_surface = pygame.transform.scale(city_surface, (1080, 1080))  # 900 * 1.2
+truck_surface = pygame.transform.scale(truck_surface, (26, 96))    # 22 * 1.2, 80 * 1.2
+red_car_surface = pygame.transform.scale(red_car_surface, (22, 72))  # 18 * 1.2, 60 * 1.2
+race_car_surface = pygame.transform.scale(race_car_surface, (22, 54))  # 18 * 1.2, 45 * 1.2
+location_icon_surface = pygame.transform.scale(location_icon_surface, (60, 60))  # 50 * 1.2
+menu_bar_surface = pygame.transform.scale(menu_bar_surface, (60, 60))  # 50 * 1.2
 
 # List to store active vehicles
 vehicles = []
-my_vehicle=[]
-collided= []
-source=None,
-destination=None
+my_vehicle = []
+collided = []
+source = None
+destination = None
 
-spawn_timer = 0  # Timer for controlling vehicle spawn interval
-text_timer=0
-SPAWN_INTERVAL = 3000  # 3 seconds
-vehicle_id_counter=0
+spawn_timer = 0
+text_timer = 0
+SPAWN_INTERVAL = 4000  # Remains in milliseconds, no scaling needed
+vehicle_id_counter = 0
 
-def draw_text(text,font,text_col):
+# Home screen function
+def home_screen():
     global text_timer
-    if text_timer<50:
-        text_surf = font.render(text,True,text_col)
-        text_rect = text_surf.get_rect(center=(SCREEN_WIDTH//2,SCREEN_HEIGHT*0.03))
-        screen.blit(text_surf,text_rect)
+    running = True
+    city_sound = None
+    intro_sfx = False
 
-    text_timer+=1
+    while running:
+        screen.fill((0, 0, 0))
+        title_text = font.render("Traffic Simulation", True, TEXT_COL)
+        start_text = font.render("Start", True, TEXT_COL)
+        quit_text = font.render("Quit", True, TEXT_COL)
 
-    if text_timer==100:
-        text_timer=0
+        if not intro_sfx:
+            intro_sfx = True
+            intro_sound()
+
+        if text_timer < 50:
+            screen.blit(title_text, (SCREEN_WIDTH//2 - 120, 360))  # 100 * 1.2 = 120, 300 * 1.2 = 360
+
+        elif text_timer == 100:
+            text_timer = 0
+        
+        text_timer += 1
+        
+        start_rect = pygame.Rect(SCREEN_WIDTH//2 - 78, 480, 180, 60)  # 65*1.2=78, 400*1.2=480, 150*1.2=180, 50*1.2=60
+        quit_rect = pygame.Rect(SCREEN_WIDTH//2 - 48, 552, 120, 48)  # 40*1.2=48, 460*1.2=552, 100*1.2=120, 40*1.2=48
+        
+        pygame.draw.rect(screen, (50, 200, 50), start_rect)
+        pygame.draw.rect(screen, (200, 50, 50), quit_rect)
+        screen.blit(start_text, (SCREEN_WIDTH//2 - start_text.get_width()//2 + 12, 492))  # 10*1.2=12, 410*1.2=492
+        screen.blit(quit_text, (SCREEN_WIDTH//2 - quit_text.get_width()//2 + 12, 564))  # 10*1.2=12, 470*1.2=564
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                play_selected_sound()
+                pygame.quit()
+                exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if start_rect.collidepoint(event.pos):
+                    if city_sound is None:
+                        city_sound = load_and_play_city_sound()
+                    running = False
+                if quit_rect.collidepoint(event.pos):
+                    pygame.quit()
+                    exit()
+
+        pygame.display.update()
+        clock.tick(100)
+
+home_screen()
+
+def draw_text(text, font, text_col):
+    global text_timer
+    if text_timer < 50:
+        text_surf = font.render(text, True, text_col)
+        text_rect = text_surf.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT * 0.03))  # 0.03 * 1080 = 32.4
+        screen.blit(text_surf, text_rect)
+
+    text_timer += 1
+    if text_timer == 100:
+        text_timer = 0
 
 def draw_item(coords):
     loc_rect = location_icon_surface.get_rect(center=coords)
-    screen.blit(location_icon_surface,loc_rect.topleft)
+    screen.blit(location_icon_surface, loc_rect.topleft)
 
 class UI:
-    def __init__(self,surface,image,x,y):
-        self.image=image
-        self.surface=surface
-        self.x=x
-        self.click_count=0
-        self.y=y
-        self.draw_location_icon=False
-        self.source_coords = (-100,-100)
-        self.source_node=None
-        self.destination_node=None
-
-        self.destination_coords=(-100,-100)
+    def __init__(self, surface, image, x, y):
+        self.image = image
+        self.surface = surface
+        self.x = x
+        self.y = y
+        self.click_count = 0
+        self.draw_location_icon = False
+        self.source_coords = (-120, -120)  # -100 * 1.2
+        self.source_node = None
+        self.destination_node = None
+        self.destination_coords = (-120, -120)  # -100 * 1.2
         self.is_menu_bar_open = False
-        self.menu_icon_rect = self.surface.get_rect(topleft=(self.x,self.y))
+        self.menu_icon_rect = self.surface.get_rect(topleft=(self.x, self.y))
 
     def render(self):
-
-        screen.blit(self.surface,(self.x,self.y))
-
-        if (self.is_menu_bar_open):
+        screen.blit(self.surface, (self.x, self.y))
+        if self.is_menu_bar_open:
             self.show_text()
-            
-        if (self.draw_location_icon):
+        if self.draw_location_icon:
             draw_item(self.source_coords)
             draw_item(self.destination_coords)
 
-
-    def handle_source_destination(self,pos):
-        global source,destination,show_location_icon
-
-        if (self.is_menu_bar_open):
+    def handle_source_destination(self, pos):
+        global source, destination
+        if self.is_menu_bar_open:
             self.show_text()
         
         if not self.menu_icon_rect.collidepoint(event.pos):
-            #only read it as input to source or destination coordinate if user has not clicked on menu icon
-    
-            if (self.click_count==0):
-                node=self.find_source_or_destination_node(pos)
-                self.source_coords=coordinates[node]
-                self.source_node=node
-                self.click_count+=1
-                self.draw_location_icon=True
-            
-            elif (self.click_count==1):
-                node=self.find_source_or_destination_node(pos)
-                self.destination_coords=coordinates[node]
-                self.destination_node=node
-                #Both source and destination are fixed now spawn vehicle
-                self.click_count=0
-
-                self.is_menu_bar_open=False
-                self.is_first_vehicle=False
-                source=self.source_coords
-                destination=self.destination_coords
-                spawn_vehicle(self.source_node,self.destination_node)
-            
+            if self.click_count == 0:
+                node = self.find_source_or_destination_node(pos)
+                self.source_coords = coordinates[node]
+                self.source_node = node
+                self.click_count += 1
+                self.draw_location_icon = True
+            elif self.click_count == 1:
+                node = self.find_source_or_destination_node(pos)
+                self.destination_coords = coordinates[node]
+                self.destination_node = node
+                self.click_count = 0
+                self.is_menu_bar_open = False
+                source = self.source_coords
+                destination = self.destination_coords
+                spawn_vehicle(self.source_node, self.destination_node)
             else:
-                print("some error occured , clickcount",self.click_count)
+                print("some error occurred, clickcount", self.click_count)
 
+            print("user clicked at x,y", pos)
 
-            print("user clicked at x,y",pos)
-
-
-
-    def find_source_or_destination_node(self,pos):
-    
-            #Find the nearest node to the clicked position
-            min_dist = float('inf')
-            nearest = None
-            x, y = pos
-            for node, (nx, ny) in coordinates.items():
-                dist = math.sqrt((x - nx) ** 2 + (y - ny) ** 2)
-                if dist < min_dist:
-                    min_dist = dist
-                    nearest = node
-            return (nearest) # returns tuple with 3 datas i.e x ,y coordinates and the name of node
-    
+    def find_source_or_destination_node(self, pos):
+        min_dist = float('inf')
+        nearest = None
+        x, y = pos
+        for node, (nx, ny) in coordinates.items():
+            dist = math.sqrt((x - nx) ** 2 + (y - ny) ** 2)
+            if dist < min_dist:
+                min_dist = dist
+                nearest = node
+        return nearest
 
     def show_text(self):
-            draw_text(
-            text="Select Source And Destination",
-            font=font,
-            text_col=TEXT_COL,
-            )
-
+        draw_text("Select Source And Destination", font, TEXT_COL)
 
     def reset_state(self):
-            self.draw_location_icon=False
-            self.source_coords=(-100,1000)
-            self.destination_coords=(-100,-100)
-            self.click_count=0
-
+        self.draw_location_icon = False
+        self.source_coords = (-120, 1200)  # -100*1.2, 1000*1.2
+        self.destination_coords = (-120, -120)  # -100*1.2
+        self.click_count = 0
 
 class Vehicle:
     def __init__(self, path, image):
         global vehicle_id_counter
         self.id = vehicle_id_counter
-        vehicle_id_counter += 1  # Increment the counter
-        
+        vehicle_id_counter += 1
         self.original_path = path[:]
         self.path = self.shift_path(path)
         self.show_path = False
         self.facing = 'F'
-        self.speed = 1
+        self.speed = 1.2  # 1 * 1.2
         self.collideflag = False
-        self.pushback_active = False  # New: Tracks if vehicle is being pushed back
-        self.pushback_distance = 0    # New: Total distance to push back
-        self.pushback_speed = 1       # New: Speed of pushback (pixels per frame)
+        self.pushback_active = False
+        self.pushback_distance = 0
+        self.pushback_speed = 1.8  # 1.5 * 1.2
         self.path_color = random.choice(['green', 'yellow', 'orange'])
         self.current_index = 0
         self.old_rect = None
@@ -185,99 +210,63 @@ class Vehicle:
         
         if len(self.original_path) > 1:
             self.set_initial_direction(self.original_path[0], self.original_path[1])
-        
-        print("Before path", self.original_path)
-        print("After shifted path", self.path)
 
-    def check_ahead(self,safety_distance):
-        #self.old_rect = self.lookahead_rect
-        #self.lookahead_rect = pygame.Rect(self.rect.centerx,self.rect.centery,40,40)
+    def check_ahead(self, safety_distance):
         if self.facing == 'R':
-                self.lookahead_rect = pygame.Rect(self.rect.centerx, self.rect.top+5,
-                                            safety_distance, self.rect.height-10)
+            self.lookahead_rect = pygame.Rect(self.rect.centerx, self.rect.top + 6,  # 5*1.2
+                                        safety_distance, self.rect.height - 12)  # 10*1.2
         elif self.facing == 'L':
-                self.lookahead_rect = pygame.Rect(self.rect.centerx - safety_distance,
-                                            self.rect.top+5, safety_distance, self.rect.height-10)
+            self.lookahead_rect = pygame.Rect(self.rect.centerx - safety_distance,
+                                        self.rect.top + 6, safety_distance, self.rect.height - 12)
         elif self.facing == 'U':
-                self.lookahead_rect = pygame.Rect(self.rect.left+5, self.rect.centery - safety_distance,
-                                            self.rect.width-10, safety_distance)
+            self.lookahead_rect = pygame.Rect(self.rect.left + 6, self.rect.centery - safety_distance,
+                                        self.rect.width - 12, safety_distance)
         elif self.facing == 'D':
-                self.lookahead_rect = pygame.Rect(self.rect.left+5, self.rect.centery,
-                                            self.rect.width-10, safety_distance)
+            self.lookahead_rect = pygame.Rect(self.rect.left + 6, self.rect.centery,
+                                        self.rect.width - 12, safety_distance)
         else:
-            self.lookahead_rect = self.rect.copy()  # fallback
-        
+            self.lookahead_rect = self.rect.copy()
 
-    def compute_offset_vector(self,A, B, offset=10):
-        """
-        Given two points A and B (assumed to form an axis-aligned segment),
-        return the offset vector that shifts the segment to the left lane.
-        
-        For vertical segments:
-        - Moving downward (increasing y): left is east, so offset = (offset, 0)
-        - Moving upward: left is west, so offset = (-offset, 0)
-        
-        For horizontal segments:
-        - Moving right (increasing x): left is north, so offset = (0, -offset)
-        - Moving left: left is south, so offset = (0, offset)
-        """
+    def compute_offset_vector(self, A, B, offset=12):  # offset remains since it’s relative to path
         ax, ay = A
         bx, by = B
-        if ax == bx:  # vertical segment
-            if by > ay:  # moving downward
+        if ax == bx:
+            if by > ay:
                 return (offset, 0)
-            else:         # moving upward
+            else:
                 return (-offset, 0)
-        elif ay == by:  # horizontal segment
-            if bx > ax:  # moving right
+        elif ay == by:
+            if bx > ax:
                 return (0, -offset)
-            else:         # moving left
+            else:
                 return (0, offset)
         else:
-            # For non-axis-aligned segments, you may need a more general solution.
             return (0, 0)
 
-    def shift_path(self,path, offset=12):
-        """
-        Given a centerline path (a list of coordinate tuples), compute a new path
-        for the left lane.
-        
-        For the first and last nodes, simply shift by the offset of the first/last segment.
-        For intermediate nodes (junctions), compute the shifted coordinate as the intersection
-        of the offset lines of the incoming and outgoing segments.
-        """
+    def shift_path(self, path, offset=14):  # 12 * 1.2 = 14.4, rounded to 14
         n = len(path)
         if n == 0:
             return []
         
         new_path = []
-        
-        # First node: shift using the first segment's offset.
         if n > 1:
             v = self.compute_offset_vector(path[0], path[1], offset)
             new_path.append((path[0][0] + v[0], path[0][1] + v[1]))
         else:
             new_path.append(path[0])
         
-        # Intermediate nodes:
         for i in range(1, n - 1):
             A = path[i - 1]
             B = path[i]
             C = path[i + 1]
-            # Compute the offset vector for the segment before and after the node.
             v_in = self.compute_offset_vector(A, B, offset)
             v_out = self.compute_offset_vector(B, C, offset)
-            
-            # If the segments are collinear, they should have the same offset.
             if (A[0] == B[0] and B[0] == C[0]) or (A[1] == B[1] and B[1] == C[1]):
                 new_B = (B[0] + v_in[0], B[1] + v_in[1])
             else:
-                # For perpendicular segments, use the incoming offset for the x-coordinate
-                # and the outgoing offset for the y-coordinate.
                 new_B = (B[0] + v_in[0], B[1] + v_out[1])
             new_path.append(new_B)
         
-        # Last node: shift using the last segment's offset.
         if n > 1:
             v = self.compute_offset_vector(path[-2], path[-1], offset)
             new_path.append((path[-1][0] + v[0], path[-1][1] + v[1]))
@@ -287,40 +276,33 @@ class Vehicle:
         return new_path
 
     def set_initial_direction(self, start, next_pos):
-        """Set initial rotation based on first movement direction using the original path."""
         start_x, start_y = start
         next_x, next_y = next_pos
-
-        if next_x > start_x:  # Moving right
+        if next_x > start_x:
             angle = -90
             self.facing = 'R'
-        elif next_x < start_x:  # Moving left
+        elif next_x < start_x:
             angle = 90
             self.facing = 'L'
-        elif next_y > start_y:  # Moving down
+        elif next_y > start_y:
             angle = 180
             self.facing = 'D'
-        else:  # Moving up (default)
+        else:
             angle = 0
             self.facing = 'U'
-
         self.surface = pygame.transform.rotate(self.original_surface, angle)
         self.rect = self.surface.get_rect(center=self.rect.center)
 
-        
-    def start_pushback(self, max_distance=10):
-        """Initiate a smooth pushback over multiple frames."""
+    def start_pushback(self, max_distance=12):  # 10 * 1.2 = 12
         self.pushback_active = True
-        self.pushback_distance = max_distance  # Total distance to push back
-        self.speed = 0  # Stop forward movement during pushback
+        self.pushback_distance = max_distance
+        self.speed = 0
         self.collideflag = True
         print(f"Vehicle {self.id} at {self.rect.center} started pushback")
 
-
     def update_pushback(self):
-        """Incrementally push the vehicle back each frame."""
         if self.pushback_active and self.pushback_distance > 0:
-            push_step = min(self.pushback_speed, self.pushback_distance)  # Move by pushback_speed or remaining distance
+            push_step = min(self.pushback_speed, self.pushback_distance)
             if self.facing == 'R':
                 self.rect.centerx -= push_step
             elif self.facing == 'L':
@@ -334,9 +316,8 @@ class Vehicle:
                 self.pushback_active = False
                 print(f"Vehicle {self.id} at {self.rect.center} completed pushback")
 
-
     def checkcollission(self):
-        self.check_ahead(80)
+        self.check_ahead(96)  # 80 * 1.2 = 96
         collision_detected = False
         all_vehicles = my_vehicle + vehicles
         
@@ -346,33 +327,26 @@ class Vehicle:
                     collision_detected = True
                     if self.rect.colliderect(vehicle.rect):
                         if self.id < vehicle.id and not self.pushback_active:
-                            self.start_pushback(max_distance=10)  # Start smooth pushback
-                        # Higher ID vehicle continues moving
+                            self.start_pushback(max_distance=12)  # 10 * 1.2
                     else:
                         if self.id < vehicle.id and not self.pushback_active:
                             self.speed = 0
                             self.collideflag = True
                             print(f"Vehicle {self.id} at {self.rect.center} stopped due to near collision with Vehicle {vehicle.id}")
-                    #break
         
         if not collision_detected and self.collideflag and not self.pushback_active:
-            self.speed = 1
+            self.speed = 1.2  # 1 * 1.2
             self.collideflag = False
             print(f"Vehicle {self.id} at {self.rect.center} resumed movement")
 
-
-    def update_position(self,):
+    def update_position(self):
         self.checkcollission()
-        
-        # Handle pushback if active
         if self.pushback_active:
             self.update_pushback()
-        # Move forward only if not pushing back and speed > 0
         elif self.speed > 0:
             target_x, target_y = self.path[self.current_index + 1]
             dx = target_x - self.rect.centerx
             dy = target_y - self.rect.centery
-
             if abs(dx) > self.speed:
                 self.rect.centerx += self.speed if dx > 0 else -self.speed
             elif abs(dy) > self.speed:
@@ -394,24 +368,20 @@ class Vehicle:
                                             self.original_path[self.current_index + 1])
 
     def rotate_vehicle(self, current_point, next_point):
-        """Rotate based on the vector from current_point to next_point."""
         current_x, current_y = current_point
         next_x, next_y = next_point
-
-        if next_x > current_x:  # rightward
+        if next_x > current_x:
             angle = -90
             new_facing = 'R'
-        elif next_x < current_x:  # leftward
+        elif next_x < current_x:
             angle = 90
             new_facing = 'L'
-        elif next_y > current_y:  # downward
+        elif next_y > current_y:
             angle = 180
             new_facing = 'D'
-        else:  # upward
+        else:
             angle = 0
             new_facing = 'U'
-
-        # Only rotate if the facing direction changes.
         if new_facing != self.facing:
             self.surface = pygame.transform.rotate(self.original_surface, angle)
             self.rect = self.surface.get_rect(center=self.rect.center)
@@ -423,93 +393,57 @@ class Vehicle:
     def draw(self, screen):
         if self.show_path:
             for i in range(self.current_index, len(self.path) - 2):
+                if self.facing == 'U':
+                    centerx = self.rect.centerx + 12  # 10*1.2
+                    centery = self.rect.centery - 22  # 18*1.2
+                elif self.facing == 'D':
+                    centerx = self.rect.centerx - 12
+                    centery = self.rect.centery + 22
+                elif self.facing == 'L':
+                    centerx = self.rect.centerx - 22
+                    centery = self.rect.centery - 12
+                elif self.facing == 'R':
+                    centerx = self.rect.centerx + 22
+                    centery = self.rect.centery + 12
 
-                pygame.draw.rect(screen, (255, 255, 0), self.lookahead_rect, 50)  # Draw lookahead_rect in red
-                screen.blit(self.surface, self.rect)
-
-                if self.facing=='U':
-                    centerx=self.rect.centerx+10
-                    centery=self.rect.centery-18 #
-                elif self.facing=='D':
-                    centerx=self.rect.centerx-10
-                    centery=self.rect.centery+18 #
-
-                elif self.facing=='L':
-                    centerx=self.rect.centerx-18 #
-                    centery=self.rect.centery-10
-
-                elif self.facing=='R':
-                    centerx=self.rect.centerx+18 #
-                    centery=self.rect.centery+10
-
-                pygame.draw.circle(
-                    screen,
-                    color=self.path_color,
-                    center=(centerx,centery),
-                    radius=5,
-                    width=20
-
-                )
-                pygame.draw.line(
-                    surface=screen,
-                    color=self.path_color,
-                    start_pos=(centerx, centery),
-                    end_pos=self.original_path[self.current_index + 1],
-                    width=10)
-                
-                pygame.draw.line(
-                    surface=screen,
-                    color=self.path_color,
-                    start_pos=self.original_path[i+1],
-                    end_pos=self.original_path[i +2],
-                    width=8)
-                
+                pygame.draw.circle(screen, self.path_color, (centerx, centery), 6, 20)  # 5*1.2=6
+                pygame.draw.line(screen, self.path_color, (centerx, centery),
+                                self.original_path[self.current_index + 1], 12)  # 10*1.2
+                pygame.draw.line(screen, self.path_color, self.original_path[i + 1],
+                                self.original_path[i + 2], 10)  # 8*1.2=9.6, rounded to 10
         screen.blit(self.surface, self.rect)
-
 
     def check_click(self, pos):
         return self.rect.collidepoint(pos)
 
-
-
-
-def spawn_vehicle(source='NULL',destination='NULL'):
-    """Spawn a vehicle with a random source & destination (only edge nodes)."""
-    global vehicles,vehicle_surface
-    is_user_defined=False
-
-    if source=='NULL' and destination=='NULL':
-        is_user_defined=True
+def spawn_vehicle(source='NULL', destination='NULL'):
+    global vehicles
+    is_user_defined = False
+    if source == 'NULL' and destination == 'NULL':
+        is_user_defined = True
         source, destination = utility_func.random_spawn_edge()
-
     path = ts.shortest_coord(source=source, destination=destination)
-    
     if path:
-        vehicle = random.choice([red_car_surface,truck_surface])
-        new_vehicle = Vehicle(path,vehicle)
-
-        # if source =='NULL' then it is random vehicle generated by app itself
-        #  but if source and destionation given then it is by user so put them in my_vehicle list
+        vehicle = random.choice([red_car_surface, truck_surface, race_car_surface])
+        new_vehicle = Vehicle(path, vehicle)
         if is_user_defined:
             my_vehicle.append(new_vehicle)
         else:
-            new_vehicle.show_path=True
+            new_vehicle.show_path = True
             vehicles.append(new_vehicle)
 
-
-menu = UI(menu_bar_surface,menu_bar_surface,SCREEN_WIDTH*0.91,SCREEN_HEIGHT*0.02) #menu icon
+menu = UI(menu_bar_surface, menu_bar_surface, SCREEN_WIDTH * 0.91, SCREEN_HEIGHT * 0.02)
 
 while True:
     screen.blit(city_surface, (0, 0))
     menu.render()
     
-    # Handle vehicle spawning at intervals
     current_time = pygame.time.get_ticks()
     if current_time - spawn_timer > SPAWN_INTERVAL:
         spawn_vehicle()
-        spawn_timer = current_time  # Reset spawn timer
+        spawn_timer = current_time
 
-    all_vehicles = vehicles + my_vehicle  # Combine lists for rendering and collision
+    all_vehicles = vehicles + my_vehicle
     for vehicle in all_vehicles[:]:
         vehicle.update_position()
         if vehicle.has_reached_destination():
@@ -520,39 +454,31 @@ while True:
         else:
             vehicle.draw(screen)
 
-    # Event handling
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             exit()
-        
-        if event.type == pygame.MOUSEMOTION:
-            #print(pygame.mouse.get_pos())
-            pass
-
         if event.type == pygame.MOUSEBUTTONDOWN:
-
             for vehicle in vehicles[:]:
                 if vehicle.check_click(event.pos):
-                    print("Clicked")
-                    vehicle.show_path= not vehicle.show_path
-            
-
+                    vehicle.show_path = not vehicle.show_path
             for vehicle in my_vehicle[:]:
                 if vehicle.check_click(event.pos):
-                    print("Clicked")
-                    vehicle.show_path= not vehicle.show_path
-
-            if (menu.is_menu_bar_open): # only handle source destination logic if menu is opened
-                if (menu.click_count < 2): # user can click only twice i.e source and destination
+                    vehicle.show_path = not vehicle.show_path
+            if menu.is_menu_bar_open and menu.click_count < 2:
+                if menu.click_count == 0:
                     menu.handle_source_destination(event.pos)
-    
+                    play_selected_sound()
+                elif menu.click_count == 1:
+                    menu.handle_source_destination(event.pos)
+                    play_selected_sound()
             if menu.menu_icon_rect.collidepoint(event.pos):
                 menu.show_text()
-                if not menu.is_menu_bar_open: menu.reset_state() #if it is just click reset state like click count=0 source,dest=-100
+                play_selected_sound()
+                if not menu.is_menu_bar_open:
+                    menu.reset_state()
                 menu.is_menu_bar_open = not menu.is_menu_bar_open
                 print("Rectangle clicked!")
-
                 
     pygame.display.update()
     clock.tick(100)
