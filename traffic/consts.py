@@ -12,7 +12,7 @@ TEXT_COL = (255, 255, 255)
 
 spawn_timer = 0
 text_timer = 0
-SPAWN_INTERVAL = 4000 
+SPAWN_INTERVAL = 3000 
 
 
 # Load images
@@ -30,3 +30,8 @@ red_car_surface = pygame.transform.scale(red_car_surface, (22, 72))
 race_car_surface = pygame.transform.scale(race_car_surface, (22, 54))  
 location_icon_surface = pygame.transform.scale(location_icon_surface, (60, 60))  
 menu_bar_surface = pygame.transform.scale(menu_bar_surface, (60, 60))  
+
+from collections import defaultdict
+
+# Dictionary to store the number of vehicles per edge, with edges as sorted tuples (e.g., ('A', 'D'))
+vehicle_counts = defaultdict(int)

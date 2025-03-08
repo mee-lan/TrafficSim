@@ -1,23 +1,26 @@
 import random
 import pygame
+from city_graph import shortest_coord
+
 vehicles = []
 my_vehicle = []
 vehicle_id_counter = 0
 
 class Vehicle:
-    def __init__(self, path, image):
+    def __init__(self, node_path, coord_path, image):
         global vehicle_id_counter
         self.id = vehicle_id_counter
         vehicle_id_counter += 1
-        self.original_path = path[:]
-        self.path = self.shift_path(path)
+        self.node_path = node_path[:]  # List of intersection nodes (e.g., ['A', 'D', 'J'])
+        self.original_path = coord_path[:]  # List of coordinates
+        self.path = self.shift_path(coord_path)
         self.show_path = False
         self.facing = 'F'
-        self.speed = 1.2  
+        self.speed = 1.2
         self.collideflag = False
         self.pushback_active = False
         self.pushback_distance = 0
-        self.pushback_speed = 1.8  
+        self.pushback_speed = 1
         self.path_color = random.choice(['green', 'yellow', 'orange'])
         self.current_index = 0
         self.old_rect = None
@@ -29,6 +32,14 @@ class Vehicle:
         
         if len(self.original_path) > 1:
             self.set_initial_direction(self.original_path[0], self.original_path[1])
+
+    def get_current_edge(self):
+        """Return the current undirected edge the vehicle is on."""
+        if self.current_index < len(self.node_path) - 1:
+            node1 = self.node_path[self.current_index]
+            node2 = self.node_path[self.current_index + 1]
+            return tuple(sorted((node1, node2)))
+        return None
 
     def check_ahead(self, safety_distance):
         if self.facing == 'R':
@@ -46,7 +57,7 @@ class Vehicle:
         else:
             self.lookahead_rect = self.rect.copy()
 
-    def compute_offset_vector(self, A, B, offset=12):  
+    def compute_offset_vector(self, A, B, offset=12):
         ax, ay = A
         bx, by = B
         if ax == bx:
@@ -62,7 +73,7 @@ class Vehicle:
         else:
             return (0, 0)
 
-    def shift_path(self, path, offset=14):  
+    def shift_path(self, path, offset=14):
         n = len(path)
         if n == 0:
             return []
@@ -112,7 +123,7 @@ class Vehicle:
         self.surface = pygame.transform.rotate(self.original_surface, angle)
         self.rect = self.surface.get_rect(center=self.rect.center)
 
-    def start_pushback(self, max_distance=12):  
+    def start_pushback(self, max_distance=12):
         self.pushback_active = True
         self.pushback_distance = max_distance
         self.speed = 0
@@ -136,7 +147,7 @@ class Vehicle:
                 print(f"Vehicle {self.id} at {self.rect.center} completed pushback")
 
     def checkcollission(self):
-        self.check_ahead(96)  
+        self.check_ahead(96)
         collision_detected = False
         all_vehicles = my_vehicle + vehicles
         
@@ -146,7 +157,7 @@ class Vehicle:
                     collision_detected = True
                     if self.rect.colliderect(vehicle.rect):
                         if self.id < vehicle.id and not self.pushback_active:
-                            self.start_pushback(max_distance=12)  # 10 * 1.2
+                            self.start_pushback(max_distance=12)
                     else:
                         if self.id < vehicle.id and not self.pushback_active:
                             self.speed = 0
@@ -154,7 +165,7 @@ class Vehicle:
                             print(f"Vehicle {self.id} at {self.rect.center} stopped due to near collision with Vehicle {vehicle.id}")
         
         if not collision_detected and self.collideflag and not self.pushback_active:
-            self.speed = 1.2  # 1 * 1.2
+            self.speed = 1.2
             self.collideflag = False
             print(f"Vehicle {self.id} at {self.rect.center} resumed movement")
 
@@ -163,28 +174,31 @@ class Vehicle:
         if self.pushback_active:
             self.update_pushback()
         elif self.speed > 0:
-            target_x, target_y = self.path[self.current_index + 1]
-            dx = target_x - self.rect.centerx
-            dy = target_y - self.rect.centery
-            if abs(dx) > self.speed:
-                self.rect.centerx += self.speed if dx > 0 else -self.speed
-            elif abs(dy) > self.speed:
-                self.rect.centery += self.speed if dy > 0 else -self.speed
-            else:
-                self.rect.centerx, self.rect.centery = target_x, target_y
-                self.current_index += 1
-                if self.current_index < len(self.original_path) - 1:
-                    if self.current_index > 0:
-                        prev = self.original_path[self.current_index - 1]
-                        curr = self.original_path[self.current_index]
-                        nxt = self.original_path[self.current_index + 1]
-                        current_dir = (curr[0] - prev[0], curr[1] - prev[1])
-                        next_dir = (nxt[0] - curr[0], nxt[1] - curr[1])
-                        if current_dir != next_dir:
-                            self.rotate_vehicle(curr, nxt)
-                    else:
-                        self.rotate_vehicle(self.original_path[self.current_index],
-                                            self.original_path[self.current_index + 1])
+            if self.current_index < len(self.path) - 1:
+                target_x, target_y = self.path[self.current_index + 1]
+                dx = target_x - self.rect.centerx
+                dy = target_y - self.rect.centery
+                if abs(dx) <= self.speed and abs(dy) <= self.speed:
+                    # Reached the target point (intersection)
+                    self.rect.centerx, self.rect.centery = target_x, target_y
+                    self.current_index += 1
+                    if self.current_index < len(self.node_path) - 1:
+                        # Recalculate path from current node to destination
+                        current_node = self.node_path[self.current_index]
+                        destination = self.node_path[-1]
+                        new_node_path, new_coord_path = shortest_coord(source=current_node, destination=destination)
+                        if new_node_path:
+                            self.node_path = new_node_path
+                            self.original_path = new_coord_path
+                            self.path = self.shift_path(new_coord_path)
+                            self.current_index = 0  # Reset to start of new path
+                            self.rotate_vehicle(self.original_path[0], self.original_path[1])
+                else:
+                    # Move towards the target
+                    if abs(dx) > self.speed:
+                        self.rect.centerx += self.speed if dx > 0 else -self.speed
+                    elif abs(dy) > self.speed:
+                        self.rect.centery += self.speed if dy > 0 else -self.speed
 
     def rotate_vehicle(self, current_point, next_point):
         current_x, current_y = current_point
@@ -213,8 +227,8 @@ class Vehicle:
         if self.show_path:
             for i in range(self.current_index, len(self.path) - 2):
                 if self.facing == 'U':
-                    centerx = self.rect.centerx + 12  # 10*1.2
-                    centery = self.rect.centery - 22  # 18*1.2
+                    centerx = self.rect.centerx + 12
+                    centery = self.rect.centery - 22
                 elif self.facing == 'D':
                     centerx = self.rect.centerx - 12
                     centery = self.rect.centery + 22
@@ -225,11 +239,11 @@ class Vehicle:
                     centerx = self.rect.centerx + 22
                     centery = self.rect.centery + 12
 
-                pygame.draw.circle(screen, self.path_color, (centerx, centery), 6, 20)  
+                pygame.draw.circle(screen, self.path_color, (centerx, centery), 6, 20)
                 pygame.draw.line(screen, self.path_color, (centerx, centery),
-                                self.original_path[self.current_index + 1], 12) 
+                                self.original_path[self.current_index + 1], 12)
                 pygame.draw.line(screen, self.path_color, self.original_path[i + 1],
-                                self.original_path[i + 2], 10) 
+                                self.original_path[i + 2], 10)
         screen.blit(self.surface, self.rect)
 
     def check_click(self, pos):

@@ -1,18 +1,18 @@
 import pygame
-from consts import SCREEN_HEIGHT,SCREEN_WIDTH,screen,clock,menu_bar_surface,city_surface,spawn_timer,SPAWN_INTERVAL
+from consts import SCREEN_HEIGHT, SCREEN_WIDTH, screen, clock, menu_bar_surface, city_surface, spawn_timer, SPAWN_INTERVAL
 from sys import exit
 from city_graph import shortest_coord
 from utility_func import spawn_vehicle
 from sound import play_selected_sound
-from vehicle_class import vehicles,my_vehicle
-from ui_class import home_screen,UI
+from vehicle_class import vehicles, my_vehicle
+from ui_class import home_screen, UI
+from consts import vehicle_counts
 
 pygame.init()
 collided = []
 source = None
 destination = None
 
-#Start From home screen
 home_screen()
 
 menu = UI(menu_bar_surface, menu_bar_surface, SCREEN_WIDTH * 0.91, SCREEN_HEIGHT * 0.02)
@@ -27,6 +27,14 @@ while True:
         spawn_timer = current_time
 
     all_vehicles = vehicles + my_vehicle
+    
+    # Update vehicle counts before updating positions
+    vehicle_counts.clear()
+    for vehicle in all_vehicles:
+        edge = vehicle.get_current_edge()
+        if edge:
+            vehicle_counts[edge] += 1
+    
     for vehicle in all_vehicles[:]:
         vehicle.update_position()
         if vehicle.has_reached_destination():
