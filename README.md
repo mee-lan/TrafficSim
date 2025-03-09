@@ -84,7 +84,7 @@ To visually encapsulate the entire simulation process, we present the following 
 This diagram details the progression from initial graph construction through to dynamic
 rendering and user interaction
 
-            ![](traffic/src/img/4.png)
+![](traffic/src/img/4.png)
 
 ## Contributing
 
