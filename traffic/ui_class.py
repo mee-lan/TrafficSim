@@ -1,9 +1,9 @@
 import pygame
-from sound import intro_sound,play_selected_sound,load_and_play_city_sound
+from sound import intro_sound, play_selected_sound, load_and_play_city_sound
 from city_graph import coordinates
 from utility_func import spawn_vehicle
 import math
-from consts import screen,SCREEN_HEIGHT,SCREEN_WIDTH,font,TEXT_COL,clock,location_icon_surface,text_timer
+from consts import screen, SCREEN_HEIGHT, SCREEN_WIDTH, font, TEXT_COL, clock, location_icon_surface, text_timer
 
 class UI:
     def __init__(self, surface, image, x, y):
@@ -74,8 +74,6 @@ class UI:
         self.destination_coords = (-120, -120) 
         self.click_count = 0
 
-
-
 def home_screen():
     global text_timer
     running = True
@@ -93,20 +91,25 @@ def home_screen():
             intro_sound()
 
         if text_timer < 50:
-            screen.blit(title_text, (SCREEN_WIDTH//2 - 120, 360))  
+            title_text_rect = title_text.get_rect(center=(SCREEN_WIDTH // 2, 333))
+            screen.blit(title_text, title_text_rect)
 
         elif text_timer == 100:
             text_timer = 0
         
         text_timer += 1
         
-        start_rect = pygame.Rect(SCREEN_WIDTH//2 - 78, 480, 180, 60) 
-        quit_rect = pygame.Rect(SCREEN_WIDTH//2 - 48, 552, 120, 48)  
+        start_rect = pygame.Rect(428, 444, 167, 56)
+        quit_rect = pygame.Rect(456, 511, 111, 44)
         
         pygame.draw.rect(screen, (50, 200, 50), start_rect)
         pygame.draw.rect(screen, (200, 50, 50), quit_rect)
-        screen.blit(start_text, (SCREEN_WIDTH//2 - start_text.get_width()//2 + 12, 492)) 
-        screen.blit(quit_text, (SCREEN_WIDTH//2 - quit_text.get_width()//2 + 12, 564)) 
+        
+        start_text_rect = start_text.get_rect(center=start_rect.center)
+        quit_text_rect = quit_text.get_rect(center=quit_rect.center)
+        
+        screen.blit(start_text, start_text_rect)
+        screen.blit(quit_text, quit_text_rect)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -125,21 +128,17 @@ def home_screen():
         pygame.display.update()
         clock.tick(100)
 
-
 def draw_text(text, font, text_col):
     global text_timer
     if text_timer < 50:
         text_surf = font.render(text, True, text_col)
-        text_rect = text_surf.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT * 0.03))  
+        text_rect = text_surf.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT * 0.03))
         screen.blit(text_surf, text_rect)
 
     text_timer += 1
     if text_timer == 100:
         text_timer = 0
 
-
 def draw_item(coords):
     loc_rect = location_icon_surface.get_rect(center=coords)
     screen.blit(location_icon_surface, loc_rect.topleft)
-
-
