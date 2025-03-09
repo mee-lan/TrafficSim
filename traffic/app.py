@@ -1,7 +1,7 @@
 import pygame
 from consts import SCREEN_HEIGHT, SCREEN_WIDTH, screen, clock, menu_bar_surface, city_surface, spawn_timer, SPAWN_INTERVAL
 from sys import exit
-from city_graph import shortest_coord
+#from city_graph import shortest_coord
 from utility_func import spawn_vehicle
 from sound import play_selected_sound
 from vehicle_class import vehicles, my_vehicle

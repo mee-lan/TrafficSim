@@ -43,7 +43,7 @@ def shortest_coord(source='A', destination='AA'):
         edge = tuple(sorted((u, v)))  # Undirected edge, so sort for consistency
         num_vehicles = vehicle_counts[edge]
         distance = d['weight']  # Static Manhattan distance
-        alpha = 4  # Congestion factor; adjust as needed
+        alpha = 1.5  # Congestion factor; adjust as needed
         return distance * (1 + alpha * num_vehicles)
     
     shortest_path_nodes = nx.shortest_path(road_graph, source, destination, weight=dynamic_weight)

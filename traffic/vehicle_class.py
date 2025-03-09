@@ -20,7 +20,7 @@ class Vehicle:
         self.collideflag = False
         self.pushback_active = False
         self.pushback_distance = 0
-        self.pushback_speed = 1
+        self.pushback_speed = 1.2
         self.path_color = random.choice(['green', 'yellow', 'orange'])
         self.current_index = 0
         self.old_rect = None
@@ -44,16 +44,16 @@ class Vehicle:
     def check_ahead(self, safety_distance):
         if self.facing == 'R':
             self.lookahead_rect = pygame.Rect(self.rect.centerx, self.rect.top + 6,  
-                                        safety_distance, self.rect.height - 12) 
+                                        safety_distance, self.rect.height - 20) 
         elif self.facing == 'L':
             self.lookahead_rect = pygame.Rect(self.rect.centerx - safety_distance,
-                                        self.rect.top + 6, safety_distance, self.rect.height - 12)
+                                        self.rect.top + 6, safety_distance, self.rect.height - 20)
         elif self.facing == 'U':
             self.lookahead_rect = pygame.Rect(self.rect.left + 6, self.rect.centery - safety_distance,
-                                        self.rect.width - 12, safety_distance)
+                                        self.rect.width - 20, safety_distance)
         elif self.facing == 'D':
             self.lookahead_rect = pygame.Rect(self.rect.left + 6, self.rect.centery,
-                                        self.rect.width - 12, safety_distance)
+                                        self.rect.width - 20, safety_distance)
         else:
             self.lookahead_rect = self.rect.copy()
 
@@ -73,7 +73,7 @@ class Vehicle:
         else:
             return (0, 0)
 
-    def shift_path(self, path, offset=14):
+    def shift_path(self, path, offset=18):
         n = len(path)
         if n == 0:
             return []
@@ -123,7 +123,7 @@ class Vehicle:
         self.surface = pygame.transform.rotate(self.original_surface, angle)
         self.rect = self.surface.get_rect(center=self.rect.center)
 
-    def start_pushback(self, max_distance=12):
+    def start_pushback(self, max_distance=5):
         self.pushback_active = True
         self.pushback_distance = max_distance
         self.speed = 0
@@ -147,7 +147,7 @@ class Vehicle:
                 print(f"Vehicle {self.id} at {self.rect.center} completed pushback")
 
     def checkcollission(self):
-        self.check_ahead(96)
+        self.check_ahead(100)
         collision_detected = False
         all_vehicles = my_vehicle + vehicles
         
@@ -157,7 +157,7 @@ class Vehicle:
                     collision_detected = True
                     if self.rect.colliderect(vehicle.rect):
                         if self.id < vehicle.id and not self.pushback_active:
-                            self.start_pushback(max_distance=12)
+                            self.start_pushback(max_distance=8)
                     else:
                         if self.id < vehicle.id and not self.pushback_active:
                             self.speed = 0
@@ -244,6 +244,8 @@ class Vehicle:
                                 self.original_path[self.current_index + 1], 12)
                 pygame.draw.line(screen, self.path_color, self.original_path[i + 1],
                                 self.original_path[i + 2], 10)
+               # pygame.draw.rect(screen,'red',self.lookahead_rect)
+
         screen.blit(self.surface, self.rect)
 
     def check_click(self, pos):

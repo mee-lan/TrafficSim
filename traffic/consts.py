@@ -12,7 +12,7 @@ TEXT_COL = (255, 255, 255)
 
 spawn_timer = 0
 text_timer = 0
-SPAWN_INTERVAL = 3000 
+SPAWN_INTERVAL = 4000 
 
 
 # Load images
@@ -25,7 +25,7 @@ menu_bar_surface = pygame.image.load("traffic/src/images/menu_bar.png").convert_
 
 # Transform images (scale by 1.2)
 city_surface = pygame.transform.scale(city_surface, (1080, 1080))  
-truck_surface = pygame.transform.scale(truck_surface, (26, 96))    
+truck_surface = pygame.transform.scale(truck_surface, (24, 86))    
 red_car_surface = pygame.transform.scale(red_car_surface, (22, 72))  
 race_car_surface = pygame.transform.scale(race_car_surface, (22, 54))  
 location_icon_surface = pygame.transform.scale(location_icon_surface, (60, 60))  
