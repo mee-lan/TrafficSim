@@ -122,6 +122,7 @@ class Vehicle:
             self.facing = 'U'
         self.surface = pygame.transform.rotate(self.original_surface, angle)
         self.rect = self.surface.get_rect(center=self.rect.center)
+        
 
     def start_pushback(self, max_distance=5):
         self.pushback_active = True
@@ -129,6 +130,7 @@ class Vehicle:
         self.speed = 0
         self.collideflag = True
         print(f"Vehicle {self.id} at {self.rect.center} started pushback")
+
 
     def update_pushback(self):
         if self.pushback_active and self.pushback_distance > 0:
@@ -145,6 +147,7 @@ class Vehicle:
             if self.pushback_distance <= 0:
                 self.pushback_active = False
                 print(f"Vehicle {self.id} at {self.rect.center} completed pushback")
+
 
     def checkcollission(self):
         self.check_ahead(100)
@@ -168,6 +171,7 @@ class Vehicle:
             self.speed = 1.2
             self.collideflag = False
             print(f"Vehicle {self.id} at {self.rect.center} resumed movement")
+
 
     def update_position(self):
         self.checkcollission()
@@ -199,6 +203,7 @@ class Vehicle:
                         self.rect.centerx += self.speed if dx > 0 else -self.speed
                     elif abs(dy) > self.speed:
                         self.rect.centery += self.speed if dy > 0 else -self.speed
+
 
     def rotate_vehicle(self, current_point, next_point):
         current_x, current_y = current_point

@@ -45,6 +45,7 @@ while True:
         else:
             vehicle.draw(screen)
 
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -70,6 +71,7 @@ while True:
                     menu.reset_state()
                 menu.is_menu_bar_open = not menu.is_menu_bar_open
                 print("Rectangle clicked!")
+                
                 
     pygame.display.update()
     clock.tick(100)

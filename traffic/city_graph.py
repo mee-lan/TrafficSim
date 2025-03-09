@@ -1,4 +1,5 @@
-import networkx as nx
+
+import heapq
 from consts import vehicle_counts
 
 coordinates = {
@@ -29,24 +30,84 @@ def calculate_weight(coord1, coord2):
     return abs(x1 - x2) + abs(y1 - y2)
 
 def build_graph(adjlist, coordinates):
-    graph = nx.Graph()
-    for node, neighbors in adjlist.items():
-        for neighbor in neighbors:
+    graph = {}
+    for node in adjlist:
+        graph[node] = {}
+        for neighbor in adjlist[node]:
             weight = calculate_weight(coordinates[node], coordinates[neighbor])
-            graph.add_edge(node, neighbor, weight=weight)
+            graph[node][neighbor] = weight
     return graph
 
+def dynamic_weight(u, v, base_weight):
+    edge = tuple(sorted((u, v)))  # Undirected edge, sorted for consistency
+    num_vehicles = vehicle_counts.get(edge, 0)
+    alpha = 2  # Congestion factor
+    return base_weight * (1 + alpha * num_vehicles)
+
+def dijkstra(graph, source, destination):
+    """
+    Custom Dijkstra's algorithm to find the shortest path between source and destination.
+    Returns the shortest path as a list of nodes.
+    """
+    # Initialize distances with infinity for all nodes except source
+    distances = {node: float('inf') for node in graph}
+    distances[source] = 0
+    
+    # Previous node in the shortest path
+    previous = {node: None for node in graph}
+    
+    # Priority queue to store (distance, node)
+    pq = [(0, source)]
+    
+    # Set to keep track of visited nodes
+    visited = set()
+    
+    while pq:
+        # Get the node with the smallest distance
+        current_distance, current_node = heapq.heappop(pq)
+        
+        # If we've reached the destination, reconstruct and return the path
+        if current_node == destination:
+            path = []
+            while current_node:
+                path.append(current_node)
+                current_node = previous[current_node]
+            return path[::-1]  # Reverse to get path from source to destination
+        
+        # Skip if already visited
+        if current_node in visited:
+            continue
+        
+        # Mark as visited
+        visited.add(current_node)
+        
+        # Explore neighbors
+        for neighbor, base_weight in graph[current_node].items():
+            if neighbor in visited:
+                continue
+            
+            # Calculate dynamic weight considering congestion
+            weight = dynamic_weight(current_node, neighbor, base_weight)
+            distance = current_distance + weight
+            
+            # If we found a shorter path, update it
+            if distance < distances[neighbor]:
+                distances[neighbor] = distance
+                previous[neighbor] = current_node
+                heapq.heappush(pq, (distance, neighbor))
+    
+    # If destination is unreachable
+    return None
+
 def shortest_coord(source='A', destination='AA'):
-    road_graph = build_graph(adjlist, coordinates)
+    graph = build_graph(adjlist, coordinates)
+    shortest_path_nodes = dijkstra(graph, source, destination)
     
-    def dynamic_weight(u, v, d):
-        edge = tuple(sorted((u, v)))  # Undirected edge, so sort for consistency
-        num_vehicles = vehicle_counts[edge]
-        distance = d['weight']  # Static Manhattan distance
-        alpha = 1.5  # Congestion factor; adjust as needed
-        return distance * (1 + alpha * num_vehicles)
+    if shortest_path_nodes:
+        shortest_path_coords = [coordinates[node] for node in shortest_path_nodes]
+        print("Shortest path:", shortest_path_nodes)
+        return shortest_path_nodes, shortest_path_coords
+    else:
+        print(f"No path found from {source} to {destination}")
+        return [], []
     
-    shortest_path_nodes = nx.shortest_path(road_graph, source, destination, weight=dynamic_weight)
-    shortest_path_coords = [coordinates[node] for node in shortest_path_nodes]
-    print("Shortest path:", shortest_path_nodes)
-    return shortest_path_nodes, shortest_path_coords
