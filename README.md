@@ -52,15 +52,15 @@ TrafficSim-master/
 
 ### City Traffic Visualization
 
-
+![](traffic/src/img/1.jpg)
 
 ### Graph Representation
 
-
+![](traffic/src/img/3.jpg)
 
 ### Node Mapping
 
-
+![](traffic/src/img/1.jpg)
 
 ## License
 
@@ -69,4 +69,3 @@ This project is open-source. Feel free to modify and distribute it under applica
 ## Author
 
 Your Name (Modify as needed)
-
