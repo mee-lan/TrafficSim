@@ -2,14 +2,14 @@ import networkx as nx
 from consts import vehicle_counts
 
 coordinates = {
-    "A": (133, 0), "B": (500, 0), "C": (844, 0), "D": (133, 128), "E": (500, 128),
-    "F": (844, 128), "G": (844, 257), "H": (1000, 257), "I": (0, 257), "J": (133, 257),
-    "K": (133, 400), "L": (272, 400), "M": (272, 257), "N": (598, 257), "O": (598, 533),
-    "P": (844, 533), "Q": (1000, 533), "R": (0, 533), "S": (133, 533), "T": (418, 400),
-    "U": (418, 661), "V": (0, 661), "W": (0, 839), "X": (133, 839), "Y": (133, 911),
-    "Z": (418, 911), "AA": (133, 1000), "BB": (500, 1000), "CC": (500, 911),
-    "DD": (598, 911), "EE": (844, 911), "FF": (844, 1000), "GG": (844, 839),
-    "HH": (844, 661), "II": (1000, 661), "JJ": (1000, 839)
+    "A": (144, 0), "B": (540, 0), "C": (912, 0), "D": (144, 138), "E": (540, 138),
+    "F": (912, 138), "G": (912, 278), "H": (1080, 278), "I": (0, 278), "J": (144, 278),
+    "K": (144, 432), "L": (294, 432), "M": (294, 278), "N": (646, 278), "O": (646, 576),
+    "P": (912, 576), "Q": (1080, 576), "R": (0, 576), "S": (144, 576), "T": (452, 432),
+    "U": (452, 714), "V": (0, 714), "W": (0, 906), "X": (144, 906), "Y": (144, 984),
+    "Z": (452, 984), "AA": (144, 1080), "BB": (540, 1080), "CC": (540, 984),
+    "DD": (646, 984), "EE": (912, 984), "FF": (912, 1080), "GG": (912, 906),
+    "HH": (912, 714), "II": (1080, 714), "JJ": (1080, 906)
 }
 
 adjlist = {
@@ -40,10 +40,10 @@ def shortest_coord(source='A', destination='AA'):
     road_graph = build_graph(adjlist, coordinates)
     
     def dynamic_weight(u, v, d):
-        edge = tuple(sorted((u, v)))
+        edge = tuple(sorted((u, v)))  # Undirected edge, so sort for consistency
         num_vehicles = vehicle_counts[edge]
-        distance = d['weight']
-        alpha = 3
+        distance = d['weight']  # Static Manhattan distance
+        alpha = 1.5  # Congestion factor; adjust as needed
         return distance * (1 + alpha * num_vehicles)
     
     shortest_path_nodes = nx.shortest_path(road_graph, source, destination, weight=dynamic_weight)
