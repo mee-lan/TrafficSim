@@ -1,6 +1,6 @@
 # Traffic Simulation Project
 
-### Introduction
+## Introduction
 
 The Traffic Simulator project is a software-based application designed to create a virtual model of how vehicles move through an urban environment. The primary goal of this project is to simulate realistic traffic flow, including vehicle movements, traffic congestion, and the dynamic adjustment of routes based on road conditions. By doing so, it provides a platform to analyze and improve traffic management strategies.
 This simulator is developed using Python and incorporates libraries such as Pygame for graphical representation and NetworkX for managing road networks and pathfinding. The interactive and visually engaging nature of the simulator helps users observe how different factors, such as traffic signals, roadblocks, and varying vehicle densities, affect overall traffic flow.
@@ -15,7 +15,7 @@ The significance of this project lies in its ability to address real-world traff
 
 ## Installation
 
-### Prerequisites
+## Prerequisites
 
 Ensure you have **Python 3.x** installed. You may also need the following dependencies:
 
@@ -23,7 +23,7 @@ Ensure you have **Python 3.x** installed. You may also need the following depend
 pip install pygame networkx matplotlib
 ```
 
-### Running the Simulation
+## Running the Simulation
 
 Navigate to the project directory and run:
 
@@ -70,11 +70,11 @@ porates dynamic edge weights to compute the most efficient routes. The simulatio
 gine, developed using Pygame, updates vehicle positions and renders the environment
 in real time.
 
-# simplified city map with intersection and road segments
+### Simplified city map with intersection and road segments
 
 ![](traffic/src/img/1.jpg)
 
-# graph representation of city after transformation
+### Graph representation of city after transformation
 
 ![](traffic/src/img/2.jpg)
 
@@ -83,7 +83,8 @@ in real time.
 To visually encapsulate the entire simulation process, we present the following flow chart.
 This diagram details the progression from initial graph construction through to dynamic
 rendering and user interaction
-![](traffic/src/img/4.png)
+
+            ![](traffic/src/img/4.png)
 
 ## Contributing
 
