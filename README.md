@@ -60,7 +60,7 @@ TrafficSim-master/
 
 ### Node Mapping
 
-![](traffic/src/img/1.jpg)
+![](traffic/src/img/2.jpg)
 
 ## License
 
