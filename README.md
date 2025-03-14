@@ -34,9 +34,6 @@ A Python-based traffic simulation built using **Pygame**, featuring dynamic path
 
 ![Traffic Simulation Demo](traffic/demo.gif)  
 *Caption: A demonstration of vehicles navigating the city grid with path visualization.*
-
-*(Note: Replace `traffic/demo.gif` with an actual GIF or screenshot of your simulation once available.)*
-
 ---
 
 ## Installation
